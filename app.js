@@ -3,6 +3,8 @@ const KEY = ""; // USE YOUR KEY HERE
 
 //function that displays drop down menu based on classification and century.
 async function prefetchCategoryLists() {
+  onFetchStart();
+
   try {
     const [classifications, centuries] = await Promise.all([
       fetchAllClassifications(),
@@ -134,8 +136,8 @@ function renderPreview(record) {
 
 // function that updates preview when next and previous buttons clicked
 function updatePreview({ info, records }) {
+  $(".results").empty();
   const root = $("#preview");
-  root.find(".results").empty();
 
   if (info.next) {
     $(".next").data("url", info.next).attr("disabled", false);
@@ -309,7 +311,7 @@ $("#preview").on("click", ".object-preview", function (event) {
 
 // function that on anchor tag click with email, opens new window to email the address
 $("#feature").on("click", "a", async function (event) {
-  const href = $(this).attr("href");
+  const anchor = $(this).attr("href");
   if (href.startsWith("mailto")) {
     return;
   }
@@ -318,7 +320,7 @@ $("#feature").on("click", "a", async function (event) {
   onFetchStart();
 
   try {
-    const response = await fetch(href);
+    const response = await fetch(anchor);
     const { info, records } = await response.json();
 
     updatePreview(info, records);
