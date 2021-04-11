@@ -1,10 +1,8 @@
 const BASE_URL = "https://api.harvardartmuseums.org";
 const KEY = ""; // USE YOUR KEY HERE
 
-// function that displays number of classifications and centuries in each category.
+//function that displays drop down menu based on classification and century.
 async function prefetchCategoryLists() {
-  onFetchStart();
-
   try {
     const [classifications, centuries] = await Promise.all([
       fetchAllClassifications(),
@@ -30,9 +28,8 @@ async function prefetchCategoryLists() {
       // append a correctly formatted option tag into
       // the element with id select-century
       // creates a selection in drop down menu under these properties
-      // console.log(century);
       $("#select-century").append(
-        `<option value="${century.century}">${century.century}</option>`
+        `<option value="${century.name}">${century.century}</option>`
       );
     });
   } catch (error) {
@@ -42,6 +39,7 @@ async function prefetchCategoryLists() {
   }
 }
 
+//
 async function fetchAllCenturies() {
   const url = `${BASE_URL}/century?${KEY}&size=100&sort=temporalorder`;
 
@@ -110,6 +108,7 @@ async function fetchObjects() {
   }
 }
 
+// function that returns new url as search string based on new search string and/or drop down menu selections
 function buildSearchString() {
   const classif = $("#select-classification").val();
   const century = $("#select-century").val();
@@ -120,33 +119,34 @@ function buildSearchString() {
   return url;
 }
 
+// function that renders preview with an image, title, and description
 function renderPreview(record) {
   const { description, primaryimageurl, title } = record;
 
   return $(`<div class="object-preview">
-    <a href="#">
-      ${primaryimageurl ? `<img src="${primaryimageurl}" />` : ""}
-      ${title ? `<h3>${title}</h3>` : ""}
-      ${description ? `<h3>${description}</h3>` : ""}
-    </a>
-  </div>`).data("record", record);
+      <a href="#">
+        ${primaryimageurl ? `<img src="${primaryimageurl}" />` : ""}
+        ${title ? `<h3>${title}</h3>` : ""}
+        ${description ? `<h3>${description}</h3>` : ""}
+      </a>
+    </div>`).data("record", record);
 }
 
+// function that updates preview when next and previous buttons clicked
 function updatePreview({ info, records }) {
   const root = $("#preview");
   root.find(".results").empty();
-  // console.log(info);
 
   if (info.next) {
-    root.find(".next").data("url", info.next).attr("disabled", false);
+    $(".next").data("url", info.next).attr("disabled", false);
   } else {
-    root.find(".next").data("url", null).attr("disabled", true);
+    $(".next").data("url", null).attr("disabled", true);
   }
 
   if (info.prev) {
-    root.find(".previous").data("url", info.prev).attr("disabled", false);
+    $(".previous").data("url", info.prev).attr("disabled", false);
   } else {
-    root.find(".previous").data("url", null).attr("disabled", true);
+    $(".previous").data("url", null).attr("disabled", true);
   }
 
   // loop over the records, and append the renderPreview
@@ -155,15 +155,8 @@ function updatePreview({ info, records }) {
   });
 }
 
+// function that renders item selected and displays information based on key/value pairs
 function renderFeature(record) {
-  /**
-   * We need to read, from record, the following:
-   * HEADER: title, dated
-   * FACTS: description, culture, style, technique, medium, dimensions, people, department, division, contact, creditline
-   * PHOTOS: images, primaryimageurl
-   */
-  // console.log(record.title);
-
   const {
     title,
     dated,
@@ -183,41 +176,76 @@ function renderFeature(record) {
   } = record;
 
   const element = $(`<div class="object-feature">
-   <header>
-  ${title ? `<h3>${title}</h3>` : ""}
-  ${dated ? `<h3>${dated}</h3>` : ""}
+     <header>
+    ${title ? `<h3>${title}</h3>` : ""}
+    ${dated ? `<h3>${dated}</h3>` : ""}
+  
+     </header>
+     <section class="facts">
+      ${factHTML("Description", description)}
+      ${factHTML("Culture", culture, "culture")}
+      ${factHTML("Style", style)}
+      ${factHTML("Technique", technique, "technique")}
+      ${factHTML("Medium", medium, "medium")}
+      ${factHTML("Dimensions", dimensions)}
+      ${
+        people
+          ? people
+              .map((person) => {
+                return factHTML("Person", person.displayname, "person");
+              })
+              .join("")
+          : ""
+      }
+      ${factHTML("Department", department)}
+      ${factHTML("Division", division)}
+      ${factHTML(
+        "Contact",
+        `<a target="_blank" href="mailto:${contact}">${contact}</a>`
+      )}
+      ${factHTML("Creditline", creditline)}
+     </section>
+     <section class="photos">
+     ${photosHTML(images, primaryimageurl)}
+     </section>
+   </div>`);
 
-   </header>
-   <section class="facts">
-    ${factHTML("Description", description)}
-    ${factHTML("Culture", culture, searchURL("culture", culture))}
-    ${factHTML("Style", style)}
-    ${factHTML("Technique", technique, searchURL("technique", technique))}
-    ${factHTML("Medium", medium, searchURL("medium", medium))}
-    ${factHTML("Dimensions", dimensions)}
-    ${
-      people
-        ? people
-            .map((person) => {
-              return factHTML("Person", person.displayname, "person");
-            })
-            .join("")
-        : ""
-    }
-    ${factHTML("Department", department)}
-    ${factHTML("Division", division)}
-    ${factHTML(
-      "Contact",
-      `<a target="_blank" href="mailto:${contact}">${contact}</a>`
-    )}
-    ${factHTML("Creditline", creditline)}
-   </section>
-   <section class="photos">
-   ${photosHTML(images, primaryimageurl)}
-   </section>
- </div>`);
-
+  $("#feature").append(element);
   return element;
+}
+
+function searchURL(searchType, searchString) {
+  return `${BASE_URL}/object?${KEY}&${searchType}=${searchString}`;
+}
+
+// function that returns information based on item selected in main section of page, object-preview
+function factHTML(title, content, searchTerm = null) {
+  if (!content) {
+    return "";
+  } else if (!searchTerm || searchTerm === null) {
+    return `<span class="title">${title}</span><span class="content">${content}</span>`;
+  } else {
+    return `<span class="title">${title}</span>
+  <span class="content"><a href="${searchURL(
+    searchTerm,
+    content
+  )}">${content}</a></span>`;
+  }
+}
+
+// function for displaying images in the main section of page, object-preview
+function photosHTML(images, primaryimageurl) {
+  if (images && images.length > 0) {
+    return images
+      .map(function (image) {
+        return `<img src="${image.baseimageurl}"/>`;
+      })
+      .join("");
+  } else if (primaryimageurl) {
+    return `<img src="${primaryimageurl}" />`;
+  } else {
+    return "";
+  }
 }
 
 function onFetchStart() {
@@ -228,47 +256,7 @@ function onFetchEnd() {
   $("#loading").removeClass("active");
 }
 
-function searchURL(searchType, searchString) {
-  return `${BASE_URL}/object?${KEY}&${searchType}=${searchString}`;
-}
-
-function factHTML(title, content, searchTerm = null) {
-  // if content is empty or undefined, return an empty string ''
-  if (!content) {
-    return "";
-  }
-  // otherwise, if there is no searchTerm, return the two spans
-  else if (searchTerm === null) {
-    return `<span class="title">${title}</span><span class="content">${content}</span>`;
-  }
-  // otherwise, return the two spans, with the content wrapped in an anchor tag
-  else {
-    `<span class="title">${title}</span>
-<span class="content"><a href="${searchTerm}">${content}</a></span>`;
-  }
-}
-
-function photosHTML(images, primaryimageurl) {
-  const baseimageurl = primaryimageurl;
-  // if images is defined AND images.length > 0, map the images to the correct image tags, then join them into a single string.
-  // the images have a property called baseimageurl, use that as the value for src
-  if (images && images.length > 0) {
-    return images
-      .map(function (image) {
-        return `<img src="${image.baseimageurl}"/>`;
-      })
-      .join("");
-  }
-  // else if primaryimageurl is defined, return a single image tag with that as value for src
-  else if (primaryimageurl) {
-    return `<img src="${primaryimageurl}" />`;
-  }
-  // else we have nothing, so return the empty
-  else {
-    return "";
-  }
-}
-
+// function that when search clicked/enter searches based on searchString and
 $("#search").on("submit", async function (event) {
   // prevent the default
   event.preventDefault();
@@ -277,16 +265,12 @@ $("#search").on("submit", async function (event) {
   try {
     const searchString = buildSearchString();
     const encodeUrl = encodeURI(searchString);
-    // get the url from `buildSearchString`
-    // const url = buildSearchString();
-    // fetch it with await, store the result
     const response = await fetch(encodeUrl);
+    // info brings back totalrecords, pages, and next url
+    // records return item found with information and displays left side of page with a preview
     const { info, records } = await response.json();
-    // const data = await response.json();
+
     updatePreview({ info, records });
-    // log out both info and records when you get them
-    console.log(info);
-    console.log(records);
   } catch (error) {
     // log out the error
     console.error(error);
@@ -295,14 +279,11 @@ $("#search").on("submit", async function (event) {
   }
 });
 
+// function that goes to next/previous page
 $("#preview .next, #preview .previous").on("click", async function () {
   onFetchStart();
-  /*
-    read off url from the target 
-    fetch the url
-    read the records and info from the response.json()
-    update the preview
-  */ try {
+
+  try {
     const url = $(this).data("url");
     const response = await fetch(url);
     const { info, records } = await response.json();
@@ -316,36 +297,31 @@ $("#preview .next, #preview .previous").on("click", async function () {
   }
 });
 
+// function that displays item clicked on left side of page to main side of page previewing item with info
 $("#preview").on("click", ".object-preview", function (event) {
-  event.preventDefault(); // they're anchor tags, so don't follow the link
-  // find the '.object-preview' element by using .closest() from the target
-  const data = $(this).closest(".object-preview").data("record");
-  // recover the record from the element using the .data('record') we attached
-  // log out the record object to see the shape of the data
-  console.log(event);
-  // NEW => set the html() on the '#feature' element to renderFeature()
+  event.preventDefault();
+
+  const element = $(this).closest(".object-preview");
+  const data = element.data("record");
+
   $("#feature").html(renderFeature(data));
 });
 
+// function that on anchor tag click with email, opens new window to email the address
 $("#feature").on("click", "a", async function (event) {
-  // read href off of $(this) with the .attr() method
   const href = $(this).attr("href");
   if (href.startsWith("mailto")) {
     return;
   }
-  // prevent default
-  event.preventDefault();
 
-  // call onFetchStart
+  event.preventDefault();
   onFetchStart();
 
   try {
-    // fetch the href
     const response = await fetch(href);
     const { info, records } = await response.json();
-    // render it into the preview
+
     updatePreview(info, records);
-    console.log(data);
   } catch (error) {
     console.error(error);
   } finally {
@@ -353,5 +329,4 @@ $("#feature").on("click", "a", async function (event) {
   }
 });
 
-// fetchObjects().then((x) => console.log(x)); // { info: {}, records: [{}, {},]}
 prefetchCategoryLists();
